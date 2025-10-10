@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css?family=Work+Sans:300&display=swap');
+
+body {
+  font-family: 'Work Sans', sans-serif;
+  font-weight: 300; /* Light 300 */
+  background-color: aqua;
+}
+
+.App{
+    min-height: 100vh;
+    display: flex;
+    background-image: url('./Background\ \(2\).png');
+    background-size: cover;
+    background-position: center;
+    color: black;
+}
+
+
+::-webkit-scrollbar {
+  width: 0px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(136, 136, 136, 0.281);
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
