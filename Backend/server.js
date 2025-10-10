@@ -58,7 +58,7 @@ const server = app.listen(PORT, () =>
 const io = require("socket.io")(server, {
   pingTimeout: 60000,
   cors: {
-    origin: FRONTEND_URL,
+    origin: "https://talk-space-z1i1.onrender.com",
     credentials: true,
   },
 });
