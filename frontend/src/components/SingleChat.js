@@ -16,7 +16,7 @@ import UpdateGroupChatModal from "./miscellaneous/UpdateGroupChatModal";
 import { ChatState } from "../Context/ChatProvider";
 import Picker from "emoji-picker-react";
 
-const ENDPOINT = "http://localhost:5000" || "https://talk-space-z1i1.onrender.com";
+const ENDPOINT =  "https://talk-space-z1i1.onrender.com" || "http://localhost:5000" ;
 var socket, selectedChatCompare;
 
 const SingleChat = ({ fetchAgain, setFetchAgain }) => {
