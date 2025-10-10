@@ -42,7 +42,7 @@ if (process.env.NODE_ENV === "production") {
 // Error handlers
 app.use(notFound);
 app.use(errorHandler);
-
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () =>
   console.log(`Server is running on port ${PORT}`)
@@ -52,7 +52,7 @@ const server = app.listen(PORT, () =>
 const io = require("socket.io")(server, {
   pingTimeout: 60000,
   cors: {
-    origin: "http://localhost:3000",
+    origin: FRONTEND_URL,
     credentials: true,
   },
 });
