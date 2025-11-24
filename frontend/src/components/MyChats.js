@@ -1,5 +1,5 @@
 import { AddIcon } from "@chakra-ui/icons";
-import { Box, Stack, Text, Tooltip, Button, Badge } from "@chakra-ui/react";
+import { Box, Stack, Text, Tooltip, Button } from "@chakra-ui/react";
 import { useToast } from "@chakra-ui/react";
 import axios from "axios";
 import { useEffect, useState } from "react";
@@ -13,6 +13,7 @@ const MyChats = ({ fetchAgain }) => {
   const { selectedChat, setSelectedChat, user, chats, setChats } = ChatState();
   const toast = useToast();
 
+  // Fetch chats from backend
   const fetchChats = async () => {
     try {
       const config = { headers: { Authorization: `Bearer ${user.token}` } };
@@ -86,42 +87,52 @@ const MyChats = ({ fetchAgain }) => {
           "&::-webkit-scrollbar-thumb": { bg: "gray.300", borderRadius: "24px" },
         }}
       >
-        {chats ? (
-          <Stack spacing={3}>
-            {chats.map((chat) => (
-              <Tooltip
-                label={!chat.isGroupChat ? getSender(loggedUser, chat.users) : chat.chatName}
-                placement="bottom-start"
-                hasArrow
-                key={chat._id}
-              >
-                <Box
-                  onClick={() => setSelectedChat(chat)}
-                  cursor="pointer"
-                  bg={selectedChat === chat ? "teal.400" : "gray.100"}
-                  color={selectedChat === chat ? "white" : "black"}
-                  px={3}
-                  py={2}
-                  borderRadius="lg"
-                  _hover={{ bg: selectedChat === chat ? "teal.500" : "gray.200" }}
-                  display="flex"
-                  flexDir="column"
-                >
-                  <Text fontWeight="bold">
-                    {!chat.isGroupChat ? getSender(loggedUser, chat.users) : chat.chatName}
-                  </Text>
-                  {chat.latestMessage && (
-                    <Text fontSize="sm" noOfLines={1}>
-                      <b>{chat.latestMessage.sender.name}: </b>
-                      {chat.latestMessage.content}
-                    </Text>
-                  )}
-                </Box>
-              </Tooltip>
-            ))}
-          </Stack>
-        ) : (
+        {!chats ? (
           <ChatLoading />
+        ) : (
+          <Stack spacing={3}>
+            {chats.map((chat) => {
+              // Safe chat name
+              const chatName = !chat.isGroupChat
+                ? getSender(loggedUser, chat.users || [])
+                : chat.chatName || "Unnamed Chat";
+
+              return (
+                <Tooltip
+                  label={chatName}
+                  placement="bottom-start"
+                  hasArrow
+                  key={chat._id}
+                >
+                  <Box
+                    onClick={() => setSelectedChat(chat)}
+                    cursor="pointer"
+                    bg={selectedChat === chat ? "teal.400" : "gray.100"}
+                    color={selectedChat === chat ? "white" : "black"}
+                    px={3}
+                    py={2}
+                    borderRadius="lg"
+                    _hover={{
+                      bg: selectedChat === chat ? "teal.500" : "gray.200",
+                    }}
+                    display="flex"
+                    flexDir="column"
+                  >
+                    {/* Chat Name */}
+                    <Text fontWeight="bold">{chatName}</Text>
+
+                    {/* Last Message */}
+                    {chat.latestMessage && (
+                      <Text fontSize="sm" noOfLines={1}>
+                        <b>{chat.latestMessage?.sender?.name || "Unknown"}: </b>
+                        {chat.latestMessage?.content || ""}
+                      </Text>
+                    )}
+                  </Box>
+                </Tooltip>
+              );
+            })}
+          </Stack>
         )}
       </Box>
     </Box>

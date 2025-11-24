@@ -38,10 +38,28 @@ export const isSameUser = (messages, m, i) => {
   return i > 0 && messages[i - 1].sender._id === m.sender._id;
 };
 
-export const getSender = (loggedUser, users) => {
-  return users[0]?._id === loggedUser?._id ? users[1].name : users[0].name;
+export const getSender = (loggedUser, users = []) => {
+  // Remove null/undefined values
+  users = (users || []).filter(Boolean);
+
+  // If users missing or only one user → fallback
+  if (!loggedUser || users.length < 2) {
+    return "Unknown User";
+  }
+
+  const other = users.find((u) => u._id !== loggedUser._id);
+
+  return other?.name || "Unknown User";
 };
 
-export const getSenderFull = (loggedUser, users) => {
-  return users[0]._id === loggedUser._id ? users[1] : users[0];
+export const getSenderFull = (loggedUser, users = []) => {
+  users = (users || []).filter(Boolean);
+
+  if (!loggedUser || users.length < 2) {
+    return null;
+  }
+
+  const other = users.find((u) => u._id !== loggedUser._id);
+
+  return other || null;
 };
