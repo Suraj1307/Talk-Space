@@ -36,6 +36,37 @@ const MyChats = ({ fetchAgain }) => {
     fetchChats();
   }, [fetchAgain]);
 
+  // ⭐ Delete chat ONLY for current user
+  const handleRemoveChat = async (chatId) => {
+    try {
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+
+      await axios.put("/api/chat/remove-user-chat", { chatId }, config);
+
+      // Remove from UI
+      setChats(chats.filter((c) => c._id !== chatId));
+
+      // If deleted chat was selected, unselect it
+      if (selectedChat && selectedChat._id === chatId) {
+        setSelectedChat(null);
+      }
+
+      toast({
+        title: "Chat deleted",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to delete chat",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
   return (
     <Box
       display={{ base: selectedChat ? "none" : "flex", md: "flex" }}
@@ -118,8 +149,22 @@ const MyChats = ({ fetchAgain }) => {
                     display="flex"
                     flexDir="column"
                   >
-                    {/* Chat Name */}
-                    <Text fontWeight="bold">{chatName}</Text>
+                    {/* Chat Name + Delete Button Row */}
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                      <Text fontWeight="bold">{chatName}</Text>
+
+                      {/*  Delete Button */}
+                      <Button
+                        size="xs"
+                        colorScheme="red"
+                        onClick={(e) => {
+                          e.stopPropagation(); 
+                          handleRemoveChat(chat._id);
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </Box>
 
                     {/* Last Message */}
                     {chat.latestMessage && (

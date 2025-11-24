@@ -1,6 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Chat = require("../models/chatModel");
 const User = require("../models/userModel");
+const Message = require("../models/messageModel");
 
 //@description     Create or fetch One to One Chat
 //@route           POST /api/chat/
@@ -119,12 +120,8 @@ const renameGroup = asyncHandler(async (req, res) => {
 
   const updatedChat = await Chat.findByIdAndUpdate(
     chatId,
-    {
-      chatName: chatName,
-    },
-    {
-      new: true,
-    }
+    { chatName },
+    { new: true }
   )
     .populate("users", "-password")
     .populate("groupAdmin", "-password");
@@ -143,16 +140,10 @@ const renameGroup = asyncHandler(async (req, res) => {
 const removeFromGroup = asyncHandler(async (req, res) => {
   const { chatId, userId } = req.body;
 
-  // check if the requester is admin
-
   const removed = await Chat.findByIdAndUpdate(
     chatId,
-    {
-      $pull: { users: userId },
-    },
-    {
-      new: true,
-    }
+    { $pull: { users: userId } },
+    { new: true }
   )
     .populate("users", "-password")
     .populate("groupAdmin", "-password");
@@ -171,16 +162,10 @@ const removeFromGroup = asyncHandler(async (req, res) => {
 const addToGroup = asyncHandler(async (req, res) => {
   const { chatId, userId } = req.body;
 
-  // check if the requester is admin
-
   const added = await Chat.findByIdAndUpdate(
     chatId,
-    {
-      $push: { users: userId },
-    },
-    {
-      new: true,
-    }
+    { $push: { users: userId } },
+    { new: true }
   )
     .populate("users", "-password")
     .populate("groupAdmin", "-password");
@@ -193,6 +178,33 @@ const addToGroup = asyncHandler(async (req, res) => {
   }
 });
 
+
+
+const removeUserChat = asyncHandler(async (req, res) => {
+  const { chatId } = req.body;
+
+  if (!chatId) {
+    return res.status(400).json({ message: "chatId is required" });
+  }
+
+  // Remove user from chat
+  const updatedChat = await Chat.findByIdAndUpdate(
+    chatId,
+    { $pull: { users: req.user._id } },
+    { new: true }
+  );
+
+  // If no users left → delete chat
+  if (updatedChat && updatedChat.users.length === 0) {
+    await Chat.findByIdAndDelete(chatId);
+    await Message.deleteMany({ chat: chatId });
+  }
+
+  res.json({ success: true });
+});
+
+
+
 module.exports = {
   accessChat,
   fetchChats,
@@ -200,4 +212,5 @@ module.exports = {
   renameGroup,
   addToGroup,
   removeFromGroup,
+  removeUserChat,  
 };
