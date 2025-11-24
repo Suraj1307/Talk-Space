@@ -123,7 +123,6 @@ const MyChats = ({ fetchAgain }) => {
         ) : (
           <Stack spacing={3}>
             {chats.map((chat) => {
-              // Safe chat name
               const chatName = !chat.isGroupChat
                 ? getSender(loggedUser, chat.users || [])
                 : chat.chatName || "Unnamed Chat";
@@ -148,17 +147,21 @@ const MyChats = ({ fetchAgain }) => {
                     }}
                     display="flex"
                     flexDir="column"
+                    role="group" // ⭐ enables hover control
                   >
-                    {/* Chat Name + Delete Button Row */}
+                    {/* Chat Name + Delete button */}
                     <Box display="flex" justifyContent="space-between" alignItems="center">
                       <Text fontWeight="bold">{chatName}</Text>
 
-                      {/*  Delete Button */}
+                      {/* ⭐ Hidden until hover */}
                       <Button
                         size="xs"
                         colorScheme="red"
+                        opacity={0} // hidden normally
+                        _groupHover={{ opacity: 1 }} // visible when chat box hovered
+                        transition="opacity 0.2s ease-in-out"
                         onClick={(e) => {
-                          e.stopPropagation(); 
+                          e.stopPropagation();
                           handleRemoveChat(chat._id);
                         }}
                       >
