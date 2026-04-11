@@ -2,6 +2,8 @@ import { CloseIcon } from "@chakra-ui/icons";
 import { Badge, Box, Text, HStack, Tooltip } from "@chakra-ui/react";
 
 const UserBadgeItem = ({ user, handleFunction, admin }) => {
+  const isAdmin = admin?._id === user?._id;
+
   return (
     <Tooltip label={`Remove ${user.name}`} hasArrow placement="top">
       <Badge
@@ -11,18 +13,19 @@ const UserBadgeItem = ({ user, handleFunction, admin }) => {
         borderRadius="full"
         variant="solid"
         fontSize="13px"
-        colorScheme={admin === user._id ? "orange" : "purple"}
+        colorScheme={isAdmin ? "orange" : "purple"}
         cursor="pointer"
-        display="flex"
+        display="inline-flex"
         alignItems="center"
         gap={2}
+        maxW="100%"
         _hover={{ opacity: 0.8, transform: "scale(1.05)" }}
         transition="all 0.15s ease-in-out"
       >
-        <HStack spacing={1}>
-          <Text fontWeight="medium">
+        <HStack spacing={1} maxW="100%" minW={0}>
+          <Text fontWeight="medium" noOfLines={1}>
             {user.name}
-            {admin === user._id && (
+            {isAdmin && (
               <Text as="span" fontWeight="bold">
                 {" "}
                 (Admin)
@@ -30,7 +33,7 @@ const UserBadgeItem = ({ user, handleFunction, admin }) => {
             )}
           </Text>
 
-          <Box as="span" onClick={handleFunction}>
+          <Box as="button" type="button" onClick={handleFunction} flexShrink={0}>
             <CloseIcon fontSize="10px" />
           </Box>
         </HStack>

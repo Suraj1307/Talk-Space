@@ -3,17 +3,34 @@ const Message = require("../models/messageModel");
 const User = require("../models/userModel");
 const Chat = require("../models/chatModel");
 
+const ensureChatMember = async (chatId, userId) => {
+  const chat = await Chat.findOne({
+    _id: chatId,
+    users: { $elemMatch: { $eq: userId } },
+  });
+
+  if (!chat) {
+    const error = new Error("Chat Not Found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return chat;
+};
+
 //@description     Get all Messages
 //@route           GET /api/Message/:chatId
 //@access          Protected
 const allMessages = asyncHandler(async (req, res) => {
   try {
+    await ensureChatMember(req.params.chatId, req.user._id);
+
     const messages = await Message.find({ chat: req.params.chatId })
       .populate("sender", "name pic email")
       .populate("chat");
     res.json(messages);
   } catch (error) {
-    res.status(400);
+    res.status(error.statusCode || 400);
     throw new Error(error.message);
   }
 });
@@ -25,9 +42,11 @@ const sendMessage = asyncHandler(async (req, res) => {
   const { content, chatId } = req.body;
 
   if (!content || !chatId) {
-    console.log("Invalid data passed into request");
-    return res.sendStatus(400);
+    res.status(400);
+    throw new Error("content and chatId are required");
   }
+
+  await ensureChatMember(chatId, req.user._id);
 
   var newMessage = {
     sender: req.user._id,
@@ -49,7 +68,7 @@ const sendMessage = asyncHandler(async (req, res) => {
 
     res.json(message);
   } catch (error) {
-    res.status(400);
+    res.status(error.statusCode || 400);
     throw new Error(error.message);
   }
 });

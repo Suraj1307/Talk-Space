@@ -14,7 +14,12 @@ const root = createRoot(container);
 
 // Render the app
 root.render(
-  <BrowserRouter>
+  <BrowserRouter
+    future={{
+      v7_startTransition: true,
+      v7_relativeSplatPath: true,
+    }}
+  >
     <ChatProvider>
       <ChakraProvider>
         <App />

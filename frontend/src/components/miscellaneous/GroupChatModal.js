@@ -1,22 +1,23 @@
 import {
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalFooter,
-  ModalBody,
-  ModalCloseButton,
+  Box,
   Button,
-  useDisclosure,
   FormControl,
   Input,
-  useToast,
-  Box,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  ModalOverlay,
   Spinner,
+  Text,
+  useDisclosure,
+  useToast,
 } from "@chakra-ui/react";
-import axios from "axios";
 import { useState } from "react";
 import { ChatState } from "../../Context/ChatProvider";
+import { apiClient, getAuthConfig } from "../../config/apiClient";
 import UserBadgeItem from "../UserAvatar/UserBadgeItem";
 import UserListItem from "../UserAvatar/UserListItem";
 
@@ -27,13 +28,20 @@ const GroupChatModal = ({ children }) => {
   const [search, setSearch] = useState("");
   const [searchResult, setSearchResult] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [creatingGroup, setCreatingGroup] = useState(false);
   const toast = useToast();
 
-  const { user, chats, setChats } = ChatState();
+  const { user, setChats } = ChatState();
 
-  // Add user to group
+  const resetModal = () => {
+    setGroupChatName("");
+    setSelectedUsers([]);
+    setSearch("");
+    setSearchResult([]);
+  };
+
   const handleGroup = (userToAdd) => {
-    if (selectedUsers.find((u) => u._id === userToAdd._id)) {
+    if (selectedUsers.find((selectedUser) => selectedUser._id === userToAdd._id)) {
       toast({
         title: "User already added",
         status: "warning",
@@ -43,46 +51,48 @@ const GroupChatModal = ({ children }) => {
       });
       return;
     }
-    setSelectedUsers([...selectedUsers, userToAdd]);
+
+    setSelectedUsers((prevUsers) => [...prevUsers, userToAdd]);
   };
 
-  // Remove user from selected list
-  const handleDelete = (delUser) => {
-    setSelectedUsers(selectedUsers.filter((u) => u._id !== delUser._id));
+  const handleDelete = (userToDelete) => {
+    setSelectedUsers((prevUsers) =>
+      prevUsers.filter((selectedUser) => selectedUser._id !== userToDelete._id)
+    );
   };
 
-  // Search users
   const handleSearch = async (query) => {
     setSearch(query);
-    if (!query) {
+    if (!query.trim()) {
       setSearchResult([]);
       return;
     }
 
     try {
       setLoading(true);
-      const config = { headers: { Authorization: `Bearer ${user.token}` } };
-      const { data } = await axios.get(`/api/user?search=${query}`, config);
+      const { data } = await apiClient.get(
+        `/api/user?search=${encodeURIComponent(query.trim())}`,
+        getAuthConfig(user?.token)
+      );
       setSearchResult(data);
-      setLoading(false);
     } catch (error) {
       toast({
         title: "Error Occurred!",
-        description: "Failed to load search results",
+        description: error.response?.data?.message || "Failed to load search results",
         status: "error",
         duration: 5000,
         isClosable: true,
         position: "bottom-left",
       });
+    } finally {
       setLoading(false);
     }
   };
 
-  // Submit new group chat
   const handleSubmit = async () => {
-    if (!groupChatName.trim() || selectedUsers.length === 0) {
+    if (!groupChatName.trim() || selectedUsers.length < 2) {
       toast({
-        title: "Please fill all fields",
+        title: "Add a name and at least two users",
         status: "warning",
         duration: 5000,
         isClosable: true,
@@ -92,25 +102,22 @@ const GroupChatModal = ({ children }) => {
     }
 
     try {
-      const config = { headers: { Authorization: `Bearer ${user.token}` } };
-      const { data } = await axios.post(
-        `/api/chat/group`,
+      setCreatingGroup(true);
+      const { data } = await apiClient.post(
+        "/api/chat/group",
         {
-          name: groupChatName,
-          users: JSON.stringify(selectedUsers.map((u) => u._id)),
+          name: groupChatName.trim(),
+          users: JSON.stringify(selectedUsers.map((selectedUser) => selectedUser._id)),
         },
-        config
+        getAuthConfig(user?.token, { "Content-type": "application/json" })
       );
 
-      setChats([data, ...chats]);
+      setChats((prevChats) => [data, ...(prevChats || [])]);
       onClose();
-      setGroupChatName("");
-      setSelectedUsers([]);
-      setSearch("");
-      setSearchResult([]);
+      resetModal();
 
       toast({
-        title: "New Group Chat Created!",
+        title: "New group chat created",
         status: "success",
         duration: 5000,
         isClosable: true,
@@ -118,13 +125,15 @@ const GroupChatModal = ({ children }) => {
       });
     } catch (error) {
       toast({
-        title: "Failed to Create Chat!",
-        description: error.response?.data || error.message,
+        title: "Failed to create chat",
+        description: error.response?.data?.message || error.message,
         status: "error",
         duration: 5000,
         isClosable: true,
         position: "bottom",
       });
+    } finally {
+      setCreatingGroup(false);
     }
   };
 
@@ -132,7 +141,15 @@ const GroupChatModal = ({ children }) => {
     <>
       <span onClick={onOpen}>{children}</span>
 
-      <Modal onClose={onClose} isOpen={isOpen} isCentered size="lg">
+      <Modal
+        onClose={() => {
+          onClose();
+          resetModal();
+        }}
+        isOpen={isOpen}
+        isCentered
+        size="lg"
+      >
         <ModalOverlay />
         <ModalContent>
           <ModalHeader
@@ -147,7 +164,6 @@ const GroupChatModal = ({ children }) => {
           <ModalCloseButton />
 
           <ModalBody display="flex" flexDir="column" alignItems="center" gap={3}>
-            {/* Chat Name Input */}
             <FormControl>
               <Input
                 placeholder="Chat Name"
@@ -157,45 +173,52 @@ const GroupChatModal = ({ children }) => {
               />
             </FormControl>
 
-            {/* Search Users Input */}
             <FormControl>
               <Input
-                placeholder="Add Users eg: Suraj, John, Jane"
+                placeholder="Add users by name or email"
                 mb={2}
                 value={search}
                 onChange={(e) => handleSearch(e.target.value)}
               />
             </FormControl>
 
-            {/* Selected Users */}
             <Box w="100%" display="flex" flexWrap="wrap" mb={2}>
-              {selectedUsers.map((u) => (
+              {selectedUsers.map((selectedUser) => (
                 <UserBadgeItem
-                  key={u._id}
-                  user={u}
-                  handleFunction={() => handleDelete(u)}
+                  key={selectedUser._id}
+                  user={selectedUser}
+                  handleFunction={() => handleDelete(selectedUser)}
                 />
               ))}
             </Box>
 
-            {/* Search Results */}
             <Box w="100%" maxH="200px" overflowY="auto">
-              {loading ? (
-                <Spinner size="lg" />
-              ) : (
-                searchResult.slice(0, 4).map((user) => (
+              {loading ? <Spinner size="lg" /> : null}
+
+              {!loading && search.trim() && !searchResult.length ? (
+                <Text fontSize="sm" color="gray.500">
+                  No users found. Try another search.
+                </Text>
+              ) : null}
+
+              {!loading &&
+                searchResult.slice(0, 4).map((searchUser) => (
                   <UserListItem
-                    key={user._id}
-                    user={user}
-                    handleFunction={() => handleGroup(user)}
+                    key={searchUser._id}
+                    user={searchUser}
+                    handleFunction={() => handleGroup(searchUser)}
                   />
-                ))
-              )}
+                ))}
             </Box>
           </ModalBody>
 
           <ModalFooter>
-            <Button onClick={handleSubmit} colorScheme="blue">
+            <Button
+              onClick={handleSubmit}
+              colorScheme="orange"
+              isLoading={creatingGroup}
+              isDisabled={selectedUsers.length < 2 || !groupChatName.trim()}
+            >
               Create Chat
             </Button>
           </ModalFooter>

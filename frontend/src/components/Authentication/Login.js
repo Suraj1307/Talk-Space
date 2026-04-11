@@ -1,31 +1,28 @@
 import {
+  Box,
   Button,
   FormControl,
   FormLabel,
   Input,
   InputGroup,
   InputRightElement,
+  Text,
   VStack,
-  Box,
   useToast,
 } from "@chakra-ui/react";
 import { useState } from "react";
-import axios from "axios";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom";
+import { apiClient } from "../../config/apiClient";
 
 const Login = () => {
   const [show, setShow] = useState(false);
-  const toast = useToast();
-  const navigate = useNavigate(); 
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const handleClick = () => setShow(!show);
+  const toast = useToast();
+  const navigate = useNavigate();
 
   const submitHandler = async () => {
-    setLoading(true);
     if (!email || !password) {
       toast({
         title: "Please fill all the fields",
@@ -34,20 +31,15 @@ const Login = () => {
         isClosable: true,
         position: "bottom",
       });
-      setLoading(false);
       return;
     }
 
     try {
-      const config = { headers: { "Content-type": "application/json" } };
-      const { data } = await axios.post(
-        "/api/user/login",
-        { email, password },
-        config
-      );
+      setLoading(true);
+      const { data } = await apiClient.post("/api/user/login", { email, password });
 
       toast({
-        title: "Login Successful",
+        title: "Login successful",
         status: "success",
         duration: 4000,
         isClosable: true,
@@ -55,17 +47,17 @@ const Login = () => {
       });
 
       localStorage.setItem("userInfo", JSON.stringify(data));
-      setLoading(false);
-      navigate("/chats"); 
+      navigate("/chats");
     } catch (error) {
       toast({
-        title: "Error Occurred",
+        title: "Error occurred",
         description: error.response?.data?.message || error.message,
         status: "error",
         duration: 5000,
         isClosable: true,
         position: "bottom",
       });
+    } finally {
       setLoading(false);
     }
   };
@@ -89,9 +81,12 @@ const Login = () => {
       mx="auto"
       mt={8}
       p={6}
-      bg="gray.50"
-      borderRadius="md"
-      boxShadow="md"
+      bg="rgba(255,255,255,0.72)"
+      borderRadius="2xl"
+      boxShadow="0 24px 60px rgba(15, 23, 42, 0.08)"
+      borderWidth="1px"
+      borderColor="blackAlpha.100"
+      backdropFilter="blur(14px)"
     >
       <VStack spacing={4} w="100%">
         <FormControl id="login-email" isRequired>
@@ -101,11 +96,11 @@ const Login = () => {
             type="email"
             placeholder="Enter your email"
             onChange={(e) => setEmail(e.target.value)}
-            focusBorderColor="teal.400"
-            borderRadius="md"
+            focusBorderColor="orange.300"
+            borderRadius="xl"
             bg="white"
             color="black"
-            border="1px solid gray"
+            border="1px solid #d6d3d1"
           />
         </FormControl>
 
@@ -117,15 +112,15 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               type={show ? "text" : "password"}
               placeholder="Enter your password"
-              focusBorderColor="teal.400"
-              borderRadius="md"
+              focusBorderColor="orange.300"
+              borderRadius="xl"
               bg="white"
               color="black"
-              border="1px solid gray"
+              border="1px solid #d6d3d1"
               onKeyDown={(e) => e.key === "Enter" && submitHandler()}
             />
             <InputRightElement width="4.5rem">
-              <Button size="sm" h="1.75rem" onClick={handleClick}>
+              <Button size="sm" h="1.75rem" onClick={() => setShow((prev) => !prev)}>
                 {show ? "Hide" : "Show"}
               </Button>
             </InputRightElement>
@@ -133,24 +128,28 @@ const Login = () => {
         </FormControl>
 
         <Button
-          colorScheme="teal"
+          colorScheme="orange"
           width="100%"
           onClick={submitHandler}
           isLoading={loading}
-          borderRadius="md"
+          borderRadius="full"
         >
           Login
         </Button>
 
         <Button
           variant="outline"
-          colorScheme="teal"
+          colorScheme="orange"
           width="100%"
           onClick={guestLoginHandler}
-          borderRadius="md"
+          borderRadius="full"
         >
           Use Guest Credentials
         </Button>
+
+        <Text fontSize="sm" color="gray.500" textAlign="center">
+          Tip: use the guest login to explore the app quickly.
+        </Text>
       </VStack>
     </Box>
   );

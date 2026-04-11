@@ -1,30 +1,38 @@
-@import url('https://fonts.googleapis.com/css?family=Work+Sans:300&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600;700&display=swap");
+
+:root {
+  --slate-900: #111827;
+}
 
 body {
-  font-family: 'Work Sans', sans-serif;
-  font-weight: 300; /* Light 300 */
-  background-color: aqua;
+  font-family: "Work Sans", sans-serif;
+  font-weight: 400;
+  background:
+    radial-gradient(circle at top left, rgba(251, 146, 60, 0.25), transparent 24%),
+    radial-gradient(circle at 80% 10%, rgba(251, 191, 36, 0.18), transparent 18%),
+    linear-gradient(135deg, rgba(255, 248, 239, 0.98), rgba(252, 243, 228, 0.96));
 }
 
-.App{
-    min-height: 100vh;
-    display: flex;
-    background-image: url('./Background\ \(2\).png');
-    background-size: cover;
-    background-position: center;
-    color: black;
+.App {
+  min-height: 100vh;
+  display: flex;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.10)),
+    url("./Background (2).png");
+  background-size: cover;
+  background-position: center;
+  color: var(--slate-900);
 }
-
 
 ::-webkit-scrollbar {
-  width: 0px;
+  width: 8px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(136, 136, 136, 0.281);
+  background: rgba(120, 113, 108, 0.28);
+  border-radius: 999px;
 }
 
-/* Handle on hover */
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: rgba(120, 113, 108, 0.46);
 }

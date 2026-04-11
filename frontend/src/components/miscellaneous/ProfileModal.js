@@ -1,5 +1,6 @@
 import { ViewIcon } from "@chakra-ui/icons";
 import {
+  Portal,
   Modal,
   ModalOverlay,
   ModalContent,
@@ -16,69 +17,119 @@ import {
   Tooltip,
 } from "@chakra-ui/react";
 
-const ProfileModal = ({ user, children }) => {
-  const { isOpen, onOpen, onClose } = useDisclosure();
+const ProfileModal = ({
+  user,
+  children,
+  isOpen: controlledIsOpen,
+  onOpen: controlledOnOpen,
+  onClose: controlledOnClose,
+  hideTrigger = false,
+}) => {
+  const disclosure = useDisclosure();
+  const isControlled = typeof controlledIsOpen === "boolean";
+  const isOpen = isControlled ? controlledIsOpen : disclosure.isOpen;
+  const onOpen = controlledOnOpen || disclosure.onOpen;
+  const onClose = controlledOnClose || disclosure.onClose;
 
   return (
     <>
-      {/* Trigger */}
-      {children ? (
-        <Box as="span" cursor="pointer" onClick={onOpen}>
-          {children}
-        </Box>
-      ) : (
-        <Tooltip label="View Profile" placement="bottom" hasArrow>
-          <IconButton
-            display={{ base: "flex" }}
-            icon={<ViewIcon />}
-            onClick={onOpen}
-            aria-label="View Profile"
-            variant="ghost"
-            colorScheme="blue"
-          />
-        </Tooltip>
-      )}
+      {!hideTrigger &&
+        (children ? (
+          <Box as="span" cursor="pointer" onClick={onOpen}>
+            {children}
+          </Box>
+        ) : (
+          <Tooltip label="View Profile" placement="bottom" hasArrow>
+            <IconButton
+              display={{ base: "flex" }}
+              icon={<ViewIcon />}
+              onClick={onOpen}
+              aria-label="View Profile"
+              variant="ghost"
+              colorScheme="blue"
+            />
+          </Tooltip>
+        ))}
 
-      {/* Profile Modal */}
-      <Modal size={{ base: "xs", sm: "md", md: "lg" }} isOpen={isOpen} onClose={onClose} isCentered>
-        <ModalOverlay />
-        <ModalContent
-          p={6}
-          borderRadius="2xl"
-          boxShadow="xl"
-          textAlign="center"
-          fontFamily="Work sans"
+      <Portal>
+        <Modal
+          size={{ base: "xs", sm: "md", md: "lg" }}
+          isOpen={isOpen}
+          onClose={onClose}
+          isCentered
+          motionPreset="slideInBottom"
+          scrollBehavior="inside"
         >
-          {/* Header */}
-          <ModalHeader fontSize={{ base: "2xl", md: "3xl" }} fontWeight="bold">
-            {user?.name}
-          </ModalHeader>
+          <ModalOverlay bg="blackAlpha.700" backdropFilter="blur(8px)" />
+          <ModalContent
+            mx={4}
+            my={{ base: 6, md: 10 }}
+            maxW={{ base: "calc(100vw - 32px)", sm: "28rem", md: "34rem" }}
+            borderRadius="3xl"
+            boxShadow="0 30px 80px rgba(15, 23, 42, 0.24)"
+            borderWidth="1px"
+            borderColor="whiteAlpha.500"
+            bg="rgba(255, 255, 255, 0.96)"
+            textAlign="center"
+            fontFamily="Work sans"
+            overflow="hidden"
+          >
+            <ModalHeader
+              pt={8}
+              pb={3}
+              px={{ base: 5, md: 8 }}
+              fontSize={{ base: "2xl", md: "3xl" }}
+              fontWeight="bold"
+            >
+              {user?.name}
+            </ModalHeader>
 
-          {/* Body */}
-          <ModalBody>
-            <VStack spacing={5}>
-              <Image
-                borderRadius="full"
-                boxSize={{ base: "100px", md: "150px" }}
-                src={user?.pic}
-                alt={user?.name}
-                objectFit="cover"
-                shadow="md"
-              />
-              <Text fontSize={{ base: "md", md: "lg" }} color="gray.600">
-                <strong>Email:</strong> {user?.email}
-              </Text>
-            </VStack>
-          </ModalBody>
+            <ModalBody px={{ base: 5, md: 8 }} pb={4}>
+              <VStack spacing={5}>
+                <Image
+                  borderRadius="full"
+                  boxSize={{ base: "104px", md: "148px" }}
+                  src={user?.pic}
+                  alt={user?.name}
+                  objectFit="cover"
+                  shadow="xl"
+                  borderWidth="4px"
+                  borderColor="orange.100"
+                />
+                <Box
+                  w="100%"
+                  borderRadius="2xl"
+                  bg="orange.50"
+                  borderWidth="1px"
+                  borderColor="orange.100"
+                  px={{ base: 4, md: 5 }}
+                  py={4}
+                >
+                  <Text
+                    fontSize="xs"
+                    textTransform="uppercase"
+                    letterSpacing="0.12em"
+                    fontWeight="700"
+                    color="orange.500"
+                    mb={2}
+                  >
+                    Email
+                  </Text>
+                  <Text fontSize={{ base: "md", md: "lg" }} color="gray.700" wordBreak="break-word">
+                    {user?.email}
+                  </Text>
+                </Box>
+              </VStack>
+            </ModalBody>
 
-          {/* Single Close Button */}
-          <ModalFooter justifyContent="center">
-            <Button colorScheme="blue" onClick={onClose} px={8}>
-              Close
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+            <ModalFooter justifyContent="center" px={{ base: 5, md: 8 }} pb={8} pt={2}>
+              <Button colorScheme="orange" onClick={onClose} px={8} borderRadius="full">
+                Close
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+      </Portal>
     </>
   );
 };

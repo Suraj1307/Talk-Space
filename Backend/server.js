@@ -1,52 +1,70 @@
 const express = require("express");
 const dotenv = require("dotenv");
+const jwt = require("jsonwebtoken");
+const cors = require("cors");
+const path = require("path");
+const fs = require("fs");
 const connectDB = require("./config/db.js");
+const Chat = require("./models/chatModel.js");
 const userRoutes = require("./routes/userRoutes.js");
 const chatRoutes = require("./routes/chatRoutes.js");
 const messageRoutes = require("./routes/messageRoutes.js");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware.js");
-const cors = require("cors");
-const path = require("path");
-const fs = require("fs");
 
-// Load .env and connect to DB
 dotenv.config();
 connectDB();
 
 const app = express();
-app.use(express.json());
-app.use(cors());
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+const configuredOrigins = (process.env.SOCKET_CORS_ORIGIN || FRONTEND_URL)
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const localDevOriginPattern = /^https?:\/\/(localhost|127\.0\.0\.1|(?:\d{1,3}\.){3}\d{1,3})(:\d+)?$/i;
+const allowedOrigins = Array.from(new Set(configuredOrigins));
+const PORT = process.env.PORT || 5000;
+const shouldAllowLocalNetwork = allowedOrigins.every((origin) =>
+  localDevOriginPattern.test(origin)
+);
 
-// API Routes
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  return shouldAllowLocalNetwork && localDevOriginPattern.test(origin);
+};
+
+app.use(express.json());
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
+
 app.use("/api/user", userRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/message", messageRoutes);
 
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
-const PORT = process.env.PORT || 5000;
-
-// ----- PRODUCTION STATIC FILE SERVE -----
 if (process.env.NODE_ENV === "production") {
-  // Build directory path (relative to Backend/server.js)
   const buildPath = path.join(__dirname, "../frontend/build");
   console.log("Serving static from:", buildPath);
   console.log("Build exists?", fs.existsSync(path.join(buildPath, "index.html")));
 
-  // Serve static files
   app.use(express.static(buildPath));
-
-  // Fallback route: serve React index.html for any other route
-  app.get("*", (req, res) =>
-    res.sendFile(path.resolve(buildPath, "index.html"))
-  );
+  app.get("*", (req, res) => res.sendFile(path.resolve(buildPath, "index.html")));
 } else {
-  // Local dev root route
   app.get("/", (req, res) => {
     res.send("API is running...");
   });
 }
 
-// Error handlers
 app.use(notFound);
 app.use(errorHandler);
 
@@ -54,25 +72,62 @@ const server = app.listen(PORT, () =>
   console.log(`Server is running on port ${PORT}`)
 );
 
-// --- Socket.IO setup ---
 const io = require("socket.io")(server, {
   pingTimeout: 60000,
   cors: {
-    origin: "https://talk-space-z1i1.onrender.com",
+    origin(origin, callback) {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
   },
 });
 
 io.on("connection", (socket) => {
-  console.log("🟢 Connected to socket.io");
+  console.log("Socket connected");
 
-  socket.on("setup", (userData) => {
-    socket.join(userData._id);
-    console.log("User joined personal room:", userData._id);
-    socket.emit("connected");
+  socket.on("setup", (payload) => {
+    try {
+      const token =
+        typeof payload === "string"
+          ? payload
+          : payload?.token || payload?.accessToken;
+
+      if (!token) {
+        socket.emit("socket_error", "Authentication token required");
+        return;
+      }
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      socket.data.userId = decoded.id;
+      socket.join(decoded.id);
+      console.log("User joined personal room:", decoded.id);
+      socket.emit("connected");
+    } catch (error) {
+      socket.emit("socket_error", "Authentication failed");
+    }
   });
 
-  socket.on("join chat", (room) => {
+  socket.on("join chat", async (room) => {
+    if (!socket.data.userId) {
+      socket.emit("socket_error", "Authentication required");
+      return;
+    }
+
+    const chat = await Chat.findOne({
+      _id: room,
+      users: { $elemMatch: { $eq: socket.data.userId } },
+    }).select("_id");
+
+    if (!chat) {
+      socket.emit("socket_error", "You do not have access to that chat");
+      return;
+    }
+
     socket.join(room);
     console.log("User joined chat room:", room);
   });
@@ -80,19 +135,24 @@ io.on("connection", (socket) => {
   socket.on("typing", (room) => socket.in(room).emit("typing"));
   socket.on("stop typing", (room) => socket.in(room).emit("stop typing"));
 
-  socket.on("new message", (newMessageRecieved) => {
-    const chat = newMessageRecieved.chat;
-    if (!chat?.users) return console.log("chat.users not defined");
+  socket.on("new message", (newMessageReceived) => {
+    const chat = newMessageReceived.chat;
+    if (!chat?.users) {
+      console.log("chat.users not defined");
+      return;
+    }
 
     chat.users.forEach((user) => {
-      if (user._id === newMessageRecieved.sender._id) return;
-      console.log("📨 Emitting message to:", user._id);
-      socket.in(user._id).emit("message recieved", newMessageRecieved);
+      if (user._id === newMessageReceived.sender._id) return;
+      console.log("Emitting message to:", user._id);
+      socket.in(user._id).emit("message recieved", newMessageReceived);
     });
   });
 
-  socket.off("setup", (userData) => {
-    console.log("🔴 User disconnected:", userData?._id);
-    socket.leave(userData?._id);
+  socket.on("disconnect", () => {
+    if (socket.data.userId) {
+      console.log("User disconnected:", socket.data.userId);
+      socket.leave(socket.data.userId);
+    }
   });
 });
