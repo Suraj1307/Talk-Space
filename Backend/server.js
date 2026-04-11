@@ -12,16 +12,26 @@ const messageRoutes = require("./routes/messageRoutes.js");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware.js");
 
 dotenv.config();
+
+const requiredEnvVars = ["MONGO_URI", "JWT_SECRET"];
+const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
+
+if (missingEnvVars.length) {
+  throw new Error(`Missing required environment variables: ${missingEnvVars.join(", ")}`);
+}
+
 connectDB();
 
 const app = express();
+const normalizeOrigin = (origin) => origin.replace(/\/+$/, "");
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 const configuredOrigins = (process.env.SOCKET_CORS_ORIGIN || FRONTEND_URL)
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
 const localDevOriginPattern = /^https?:\/\/(localhost|127\.0\.0\.1|(?:\d{1,3}\.){3}\d{1,3})(:\d+)?$/i;
-const allowedOrigins = Array.from(new Set(configuredOrigins));
+const secureOriginPattern = /^https:\/\/[^/]+$/i;
+const allowedOrigins = Array.from(new Set(configuredOrigins.map(normalizeOrigin)));
 const PORT = process.env.PORT || 5000;
 const shouldAllowLocalNetwork = allowedOrigins.every((origin) =>
   localDevOriginPattern.test(origin)
@@ -29,8 +39,18 @@ const shouldAllowLocalNetwork = allowedOrigins.every((origin) =>
 
 const isAllowedOrigin = (origin) => {
   if (!origin) return true;
-  if (allowedOrigins.includes(origin)) return true;
-  return shouldAllowLocalNetwork && localDevOriginPattern.test(origin);
+  const normalizedOrigin = normalizeOrigin(origin);
+
+  if (allowedOrigins.includes(normalizedOrigin)) return true;
+
+  if (shouldAllowLocalNetwork) {
+    return (
+      localDevOriginPattern.test(normalizedOrigin) ||
+      secureOriginPattern.test(normalizedOrigin)
+    );
+  }
+
+  return false;
 };
 
 app.use(express.json());

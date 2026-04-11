@@ -87,9 +87,9 @@ const authUser = asyncHandler(async (req, res) => {
 //@route           GET /api/user/cloudinary-signature
 //@access          Public
 const getCloudinarySignature = asyncHandler(async (req, res) => {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY || process.env.CLOUD_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET || process.env.CLOUD_API_SECRET;
   const folder = process.env.CLOUDINARY_FOLDER || "chat-app";
 
   if (!cloudName || !apiKey || !apiSecret) {
