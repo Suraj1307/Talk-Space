@@ -18,12 +18,30 @@ const ensureChatMember = async (chatId, userId) => {
   return chat;
 };
 
+const populateMessage = async (message) => {
+  let populatedMessage = await message.populate("sender", "name pic email visibilityStatus lastSeenAt");
+  populatedMessage = await populatedMessage.populate("chat");
+  populatedMessage = await User.populate(populatedMessage, {
+    path: "chat.users",
+    select: "name pic email visibilityStatus lastSeenAt",
+  });
+
+  return populatedMessage;
+};
+
+const markMessagesReadForUser = async (chatId, userId) =>
+  Message.updateMany(
+    { chat: chatId, sender: { $ne: userId }, readBy: { $ne: userId } },
+    { $addToSet: { readBy: userId, deliveredTo: userId } }
+  );
+
 //@description     Get all Messages
 //@route           GET /api/Message/:chatId
 //@access          Protected
 const allMessages = asyncHandler(async (req, res) => {
   try {
     await ensureChatMember(req.params.chatId, req.user._id);
+    await markMessagesReadForUser(req.params.chatId, req.user._id);
 
     const messages = await Message.find({ chat: req.params.chatId })
       .populate("sender", "name pic email")
@@ -39,30 +57,28 @@ const allMessages = asyncHandler(async (req, res) => {
 //@route           POST /api/Message/
 //@access          Protected
 const sendMessage = asyncHandler(async (req, res) => {
-  const { content, chatId } = req.body;
+  const { content, chatId, clientId } = req.body;
+  const trimmedContent = (content || "").trim();
 
-  if (!content || !chatId) {
+  if (!trimmedContent || !chatId) {
     res.status(400);
     throw new Error("content and chatId are required");
   }
 
-  await ensureChatMember(chatId, req.user._id);
+  const chat = await ensureChatMember(chatId, req.user._id);
 
   var newMessage = {
     sender: req.user._id,
-    content: content,
+    content: trimmedContent,
     chat: chatId,
+    clientId,
+    deliveredTo: [req.user._id],
+    readBy: [req.user._id],
   };
 
   try {
     var message = await Message.create(newMessage);
-
-    message = await message.populate("sender", "name pic");
-    message = await message.populate("chat");
-    message = await User.populate(message, {
-      path: "chat.users",
-      select: "name pic email",
-    });
+    message = await populateMessage(message);
 
     await Chat.findByIdAndUpdate(req.body.chatId, { latestMessage: message });
 
@@ -73,4 +89,37 @@ const sendMessage = asyncHandler(async (req, res) => {
   }
 });
 
-module.exports = { allMessages, sendMessage };
+const markDelivered = asyncHandler(async (req, res) => {
+  const { messageIds = [] } = req.body;
+
+  if (!Array.isArray(messageIds) || !messageIds.length) {
+    return res.json({ updated: 0 });
+  }
+
+  const result = await Message.updateMany(
+    {
+      _id: { $in: messageIds },
+      sender: { $ne: req.user._id },
+      deliveredTo: { $ne: req.user._id },
+    },
+    { $addToSet: { deliveredTo: req.user._id } }
+  );
+
+  res.json({ updated: result.modifiedCount || 0 });
+});
+
+const markRead = asyncHandler(async (req, res) => {
+  const { chatId } = req.body;
+
+  if (!chatId) {
+    res.status(400);
+    throw new Error("chatId is required");
+  }
+
+  await ensureChatMember(chatId, req.user._id);
+  const result = await markMessagesReadForUser(chatId, req.user._id);
+
+  res.json({ updated: result.modifiedCount || 0 });
+});
+
+module.exports = { allMessages, sendMessage, markDelivered, markRead };

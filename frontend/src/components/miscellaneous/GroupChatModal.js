@@ -151,17 +151,18 @@ const GroupChatModal = ({ children }) => {
         size="lg"
       >
         <ModalOverlay />
-        <ModalContent>
+        <ModalContent bg="rgba(255,255,255,0.98)" color="gray.800">
           <ModalHeader
             fontSize="35px"
             fontFamily="Work sans"
             display="flex"
             justifyContent="center"
+            color="gray.800"
           >
             Create Group Chat
           </ModalHeader>
 
-          <ModalCloseButton />
+          <ModalCloseButton color="gray.600" />
 
           <ModalBody display="flex" flexDir="column" alignItems="center" gap={3}>
             <FormControl>
@@ -170,6 +171,9 @@ const GroupChatModal = ({ children }) => {
                 mb={3}
                 value={groupChatName}
                 onChange={(e) => setGroupChatName(e.target.value)}
+                bg="gray.50"
+                borderColor="blackAlpha.100"
+                _placeholder={{ color: "gray.500" }}
               />
             </FormControl>
 
@@ -179,6 +183,9 @@ const GroupChatModal = ({ children }) => {
                 mb={2}
                 value={search}
                 onChange={(e) => handleSearch(e.target.value)}
+                bg="gray.50"
+                borderColor="blackAlpha.100"
+                _placeholder={{ color: "gray.500" }}
               />
             </FormControl>
 
@@ -218,6 +225,7 @@ const GroupChatModal = ({ children }) => {
               colorScheme="orange"
               isLoading={creatingGroup}
               isDisabled={selectedUsers.length < 2 || !groupChatName.trim()}
+              borderRadius="full"
             >
               Create Chat
             </Button>

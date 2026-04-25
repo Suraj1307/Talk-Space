@@ -204,17 +204,18 @@ const UpdateGroupChatModal = ({ fetchMessages, fetchAgain, setFetchAgain }) => {
 
       <Modal onClose={onClose} isOpen={isOpen} isCentered size="lg">
         <ModalOverlay />
-        <ModalContent bg="white" color="black">
+        <ModalContent bg="rgba(255,255,255,0.98)" color="gray.800">
           <ModalHeader
             fontSize="35px"
             fontFamily="Work sans"
             display="flex"
             justifyContent="center"
+            color="gray.800"
           >
             {selectedChat?.chatName}
           </ModalHeader>
 
-          <ModalCloseButton color="black" />
+          <ModalCloseButton color="gray.600" />
 
           <ModalBody display="flex" flexDir="column" alignItems="center" gap={3}>
             {!isAdmin ? (
@@ -257,7 +258,7 @@ const UpdateGroupChatModal = ({ fetchMessages, fetchAgain, setFetchAgain }) => {
                 value={groupChatName}
                 onChange={(e) => setGroupChatName(e.target.value)}
                 bg="gray.100"
-                color="black"
+                color="gray.800"
                 _placeholder={{ color: "gray.500" }}
                 isDisabled={!isAdmin}
               />
@@ -280,7 +281,7 @@ const UpdateGroupChatModal = ({ fetchMessages, fetchAgain, setFetchAgain }) => {
                 value={search}
                 onChange={(e) => handleSearch(e.target.value)}
                 bg="gray.100"
-                color="black"
+                color="gray.800"
                 _placeholder={{ color: "gray.500" }}
                 isDisabled={!isAdmin}
               />

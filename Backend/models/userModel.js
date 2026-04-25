@@ -16,6 +16,15 @@ const userSchema = mongoose.Schema(
       required: true,
       default: false,
     },
+    visibilityStatus: {
+      type: String,
+      enum: ["online", "away"],
+      default: "online",
+    },
+    lastSeenAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
   { timestamps: true }
 );

@@ -17,10 +17,17 @@ const protect = asyncHandler(async (req, res, next) => {
 
       req.user = await User.findById(decoded.id).select("-password");
 
+      if (!req.user) {
+        res.status(401);
+        throw new Error("Not authorized, user not found");
+      }
+
       next();
     } catch (error) {
       res.status(401);
-      throw new Error("Not authorized, token failed");
+      throw new Error(
+        error.name === "TokenExpiredError" ? "Session expired, please log in again" : "Not authorized, token failed"
+      );
     }
   }
 

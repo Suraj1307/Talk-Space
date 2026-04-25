@@ -1,7 +1,10 @@
 import { AddIcon } from "@chakra-ui/icons";
 import {
+  Avatar,
   Box,
+  Circle,
   Button,
+  Badge,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -26,9 +29,19 @@ const MyChats = ({ fetchAgain }) => {
   const [loggedUser, setLoggedUser] = useState();
   const [chatToRemove, setChatToRemove] = useState(null);
   const [removeLoading, setRemoveLoading] = useState(false);
-  const { selectedChat, setSelectedChat, user, chats, setChats } = ChatState();
+  const { selectedChat, setSelectedChat, user, chats, setChats, notification = [], setNotification } = ChatState();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
+
+  const formatRelativeTime = (timestamp) => {
+    if (!timestamp) return "";
+    const diffInSeconds = Math.max(0, Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000));
+    if (diffInSeconds < 60) return "now";
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    return new Date(timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  };
 
   const fetchChats = useCallback(async () => {
     if (!user?.token) return;
@@ -110,12 +123,14 @@ const MyChats = ({ fetchAgain }) => {
       <Box
         pb={3}
         px={3}
-        fontSize={{ base: "24px", md: "28px" }}
+        fontSize={{ base: "20px", md: "28px" }}
         fontFamily="Work sans"
         display="flex"
         w="100%"
         justifyContent="space-between"
         alignItems="center"
+        gap={2}
+        flexWrap="wrap"
       >
         My Chats
         <GroupChatModal>
@@ -126,6 +141,7 @@ const MyChats = ({ fetchAgain }) => {
             colorScheme="orange"
             size="sm"
             borderRadius="full"
+            w={{ base: "100%", sm: "auto" }}
           >
             New Group
           </Button>
@@ -172,32 +188,89 @@ const MyChats = ({ fetchAgain }) => {
               const chatName = !chat.isGroupChat
                 ? getSender(loggedUser, chat.users || [])
                 : chat.chatName || "Unnamed Chat";
+              const chatAvatar = !chat.isGroupChat
+                ? (chat.users || []).find((chatUser) => chatUser._id !== loggedUser?._id)?.pic
+                : undefined;
+              const isActive = selectedChat?._id === chat._id;
+              const unreadCount = notification.filter((item) => item.chat?._id === chat._id).length;
+              const timestamp = chat.latestMessage?.createdAt || chat.updatedAt;
 
               return (
                 <Tooltip label={chatName} placement="bottom-start" hasArrow key={chat._id}>
                   <Box
-                    onClick={() => setSelectedChat(chat)}
+                    onClick={() => {
+                      setSelectedChat(chat);
+                      setNotification((prev) =>
+                        prev.filter((item) => item.chat?._id !== chat._id)
+                      );
+                    }}
                     cursor="pointer"
-                    bg={selectedChat === chat ? "orange.400" : "white"}
-                    color={selectedChat === chat ? "white" : "black"}
+                    bg={isActive ? "orange.50" : "whiteAlpha.950"}
+                    color="black"
                     px={3}
                     py={3}
                     borderRadius="xl"
                     _hover={{
-                      bg: selectedChat === chat ? "orange.500" : "orange.50",
+                      bg: isActive ? "orange.100" : "rgba(239,246,255,0.92)",
                     }}
                     display="flex"
                     flexDir="column"
                     gap={2}
                     role="group"
                     transition="all 0.2s ease"
-                    borderWidth="1px"
-                    borderColor={selectedChat === chat ? "orange.300" : "blackAlpha.100"}
+                    borderWidth={isActive ? "2px" : "1px"}
+                    borderColor={isActive ? "orange.400" : "blackAlpha.100"}
+                    boxShadow={isActive ? "0 14px 34px rgba(251, 146, 60, 0.18)" : "none"}
                   >
-                    <Box display="flex" justifyContent="space-between" alignItems="center" gap={3}>
-                      <Text fontWeight="bold" noOfLines={1}>
-                        {chatName}
-                      </Text>
+                    <Box
+                      display="flex"
+                      justifyContent="space-between"
+                      alignItems={{ base: "flex-start", sm: "center" }}
+                      gap={3}
+                      flexWrap={{ base: "wrap", sm: "nowrap" }}
+                    >
+                      <Box minW={0} display="flex" alignItems="center" gap={3} flex="1">
+                        <Avatar
+                          size="sm"
+                          name={chatName}
+                          src={chatAvatar}
+                          bg={chat.isGroupChat ? "blue.100" : undefined}
+                          color={chat.isGroupChat ? "blue.700" : undefined}
+                          flexShrink={0}
+                        />
+                        <Box minW={0} display="flex" alignItems="center" gap={2}>
+                        <Text fontWeight="bold" noOfLines={1}>
+                          {chatName}
+                        </Text>
+                        {chat.isGroupChat ? (
+                          <Badge colorScheme="blue" borderRadius="full" px={2}>
+                            Group
+                          </Badge>
+                        ) : null}
+                        {unreadCount > 0 ? (
+                          unreadCount === 1 ? (
+                            <Circle size="9px" bg="red.400" flexShrink={0} />
+                          ) : (
+                            <Circle size="20px" bg="red.400" color="white" fontSize="xs" fontWeight="700" flexShrink={0}>
+                              {unreadCount > 9 ? "9+" : unreadCount}
+                            </Circle>
+                          )
+                        ) : null}
+                        </Box>
+                      </Box>
+                      <Box
+                        display="flex"
+                        alignItems="center"
+                        gap={2}
+                        flexShrink={0}
+                        w={{ base: "100%", sm: "auto" }}
+                        justifyContent={{ base: "space-between", sm: "flex-end" }}
+                      >
+                        {timestamp ? (
+                          <Text fontSize="xs" color="gray.500" fontWeight="600">
+                            {formatRelativeTime(timestamp)}
+                          </Text>
+                        ) : null}
                       <Button
                         size="xs"
                         colorScheme="red"
@@ -212,15 +285,16 @@ const MyChats = ({ fetchAgain }) => {
                       >
                         Remove
                       </Button>
+                      </Box>
                     </Box>
 
                     {chat.latestMessage ? (
-                      <Text fontSize="sm" noOfLines={1}>
+                      <Text fontSize="sm" noOfLines={1} color="gray.700">
                         <b>{chat.latestMessage?.sender?.name || "Unknown"}: </b>
                         {chat.latestMessage?.content || ""}
                       </Text>
                     ) : (
-                      <Text fontSize="sm" color={selectedChat === chat ? "whiteAlpha.900" : "gray.500"}>
+                      <Text fontSize="sm" color="gray.500">
                         No messages yet. Open the chat to say hello.
                       </Text>
                     )}

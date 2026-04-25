@@ -4,6 +4,7 @@ import {
   Button,
   FormControl,
   FormLabel,
+  Icon,
   Input,
   InputGroup,
   InputRightElement,
@@ -13,6 +14,7 @@ import {
   useToast,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
+import { HiEye, HiEyeOff } from "react-icons/hi";
 import { apiClient } from "../../config/apiClient";
 
 const Signup = () => {
@@ -233,8 +235,14 @@ const Signup = () => {
               borderRadius="xl"
             />
             <InputRightElement width="4.5rem">
-              <Button size="sm" onClick={() => setShowPassword(!showPassword)}>
-                {showPassword ? "Hide" : "Show"}
+              <Button
+                size="sm"
+                variant="ghost"
+                color="gray.600"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                <Icon as={showPassword ? HiEyeOff : HiEye} boxSize={4} />
               </Button>
             </InputRightElement>
           </InputGroup>
@@ -270,8 +278,14 @@ const Signup = () => {
               borderRadius="xl"
             />
             <InputRightElement width="4.5rem">
-              <Button size="sm" onClick={() => setShowConfirm(!showConfirm)}>
-                {showConfirm ? "Hide" : "Show"}
+              <Button
+                size="sm"
+                variant="ghost"
+                color="gray.600"
+                onClick={() => setShowConfirm(!showConfirm)}
+                aria-label={showConfirm ? "Hide password confirmation" : "Show password confirmation"}
+              >
+                <Icon as={showConfirm ? HiEyeOff : HiEye} boxSize={4} />
               </Button>
             </InputRightElement>
           </InputGroup>
@@ -332,6 +346,8 @@ const Signup = () => {
           isLoading={loading || uploadingPic}
           borderRadius="full"
           isDisabled={uploadingPic}
+          _hover={{ bg: "orange.500", transform: "translateY(-1px)" }}
+          _active={{ bg: "orange.600" }}
         >
           {uploadingPic ? "Uploading image..." : "Sign Up"}
         </Button>

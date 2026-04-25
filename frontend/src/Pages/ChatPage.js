@@ -1,4 +1,4 @@
-import { Box } from "@chakra-ui/layout";
+import { Box } from "@chakra-ui/react";
 import { useState } from "react";
 import Chatbox from "../components/ChatBox";
 import MyChats from "../components/MyChats";
@@ -18,8 +18,8 @@ const ChatPage = () => {
         flexDir={{ base: "column", md: "row" }}
         gap={3}
         w="100%"
-        h={{ base: "calc(100vh - 72px)", md: "calc(100vh - 72px)" }}
-        p="10px"
+        h={{ base: "calc(100dvh - 72px)", md: "calc(100vh - 72px)" }}
+        p={{ base: 2, md: "10px" }}
         overflow="hidden"
       >
         {user && <MyChats fetchAgain={fetchAgain} />}

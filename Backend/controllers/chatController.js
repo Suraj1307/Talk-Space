@@ -1,7 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Chat = require("../models/chatModel");
-const User = require("../models/userModel");
 const Message = require("../models/messageModel");
+const User = require("../models/userModel");
 
 const findChatForUser = (chatId, userId) =>
   Chat.findOne({
@@ -39,12 +39,13 @@ const accessChat = asyncHandler(async (req, res) => {
     ],
   })
     .populate("users", "-password")
-    .populate("latestMessage");
-
-  isChat = await User.populate(isChat, {
-    path: "latestMessage.sender",
-    select: "name pic email",
-  });
+    .populate({
+      path: "latestMessage",
+      populate: {
+        path: "sender",
+        select: "name pic email visibilityStatus lastSeenAt",
+      },
+    });
 
   if (isChat.length > 0) {
     res.send(isChat[0]);
@@ -77,13 +78,14 @@ const fetchChats = asyncHandler(async (req, res) => {
     let results = await Chat.find({ users: { $elemMatch: { $eq: req.user._id } } })
       .populate("users", "-password")
       .populate("groupAdmin", "-password")
-      .populate("latestMessage")
+      .populate({
+        path: "latestMessage",
+        populate: {
+          path: "sender",
+          select: "name pic email visibilityStatus lastSeenAt",
+        },
+      })
       .sort({ updatedAt: -1 });
-
-    results = await User.populate(results, {
-      path: "latestMessage.sender",
-      select: "name pic email",
-    });
 
     res.status(200).send(results);
   } catch (error) {
