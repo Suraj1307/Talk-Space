@@ -159,6 +159,7 @@ PORT=5000
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret
 NODE_ENV=development
+FRONTEND_URL=http://localhost:3000,https://your-frontend-domain.com
 ```
 
 ---

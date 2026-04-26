@@ -36,9 +36,14 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const BODY_LIMIT = process.env.BODY_LIMIT || "1mb";
 const normalizeOrigin = (origin = "") => origin.replace(/\/+$/, "");
+const configuredOrigins = (process.env.FRONTEND_URL || "")
+  .split(",")
+  .map((origin) => normalizeOrigin(origin.trim()))
+  .filter(Boolean);
 const allowedOrigins = new Set(
   [
-    process.env.FRONTEND_URL || "http://localhost:3000",
+    ...configuredOrigins,
+    "http://localhost:3000",
     "http://127.0.0.1:3000",
     `http://localhost:${PORT}`,
     `http://127.0.0.1:${PORT}`,
