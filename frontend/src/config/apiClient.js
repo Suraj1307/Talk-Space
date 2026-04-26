@@ -3,7 +3,7 @@ import { API_BASE_PATH } from "./appConfig";
 
 export const apiClient = axios.create({
   baseURL: API_BASE_PATH,
-  timeout: 15000,
+  timeout: Number(process.env.REACT_APP_API_TIMEOUT_MS || 30000),
   headers: {
     Accept: "application/json",
   },

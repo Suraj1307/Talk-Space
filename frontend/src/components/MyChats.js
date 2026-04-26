@@ -18,7 +18,7 @@ import {
   useDisclosure,
   useToast,
 } from "@chakra-ui/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChatState } from "../Context/ChatProvider";
 import { getSender } from "../config/ChatLogics";
 import { apiClient, getAuthConfig } from "../config/apiClient";
@@ -29,9 +29,27 @@ const MyChats = ({ fetchAgain }) => {
   const [loggedUser, setLoggedUser] = useState();
   const [chatToRemove, setChatToRemove] = useState(null);
   const [removeLoading, setRemoveLoading] = useState(false);
+  const fetchErrorToastId = "my-chats-fetch-error";
+  const hasLoadedChatsRef = useRef(false);
+  const chatsRef = useRef([]);
   const { selectedChat, setSelectedChat, user, chats, setChats, notification = [], setNotification } = ChatState();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
+
+  const shouldRetryChatFetch = (error) => {
+    if (!error.response) return true;
+
+    return [408, 425, 429, 500, 502, 503, 504].includes(error.response.status);
+  };
+
+  const waitBeforeRetry = (attempt) =>
+    new Promise((resolve) => {
+      setTimeout(resolve, attempt * 700);
+    });
+
+  useEffect(() => {
+    chatsRef.current = chats || [];
+  }, [chats]);
 
   const formatRelativeTime = (timestamp) => {
     if (!timestamp) return "";
@@ -46,18 +64,43 @@ const MyChats = ({ fetchAgain }) => {
   const fetchChats = useCallback(async () => {
     if (!user?.token) return;
 
-    try {
-      const { data } = await apiClient.get("/api/chat", getAuthConfig(user.token));
-      setChats(data);
-    } catch (error) {
-      toast({
-        title: "Error Occurred!",
-        description: error.response?.data?.message || "Failed to load the chats",
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-        position: "bottom-left",
-      });
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        const { data } = await apiClient.get("/api/chat", getAuthConfig(user.token));
+        setChats(data);
+        hasLoadedChatsRef.current = true;
+        if (toast.isActive(fetchErrorToastId)) {
+          toast.close(fetchErrorToastId);
+        }
+        return;
+      } catch (error) {
+        const shouldRetry = attempt < 3 && shouldRetryChatFetch(error);
+
+        if (shouldRetry) {
+          await waitBeforeRetry(attempt);
+          continue;
+        }
+
+        const hasExistingChats =
+          hasLoadedChatsRef.current || (chatsRef.current || []).length > 0;
+
+        if (hasExistingChats) {
+          return;
+        }
+
+        toast({
+          id: fetchErrorToastId,
+          title: "Error Occurred!",
+          description:
+            error.response?.data?.message ||
+            "Failed to load the chats",
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+          position: "bottom-left",
+        });
+        return;
+      }
     }
   }, [setChats, toast, user]);
 
