@@ -113,6 +113,7 @@ const MyChats = ({ fetchAgain }) => {
       bg="whiteAlpha.880"
       backdropFilter="blur(18px)"
       w={{ base: "100%", md: "31%" }}
+      h="100%"
       minW={0}
       minH={0}
       borderRadius="2xl"

@@ -389,7 +389,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   return (
     <>
       {selectedChat ? (
-        <>
+        <Box display="flex" flexDir="column" h="100%" minH={0}>
           <Box
             pb={3}
             px={2}
@@ -468,13 +468,13 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
             display="flex"
             flexDir="column"
             justifyContent="flex-end"
+            flex="1"
             p={3}
             bg="rgba(255,255,255,0.72)"
             w="100%"
-            h="100%"
             minH={0}
             borderRadius="2xl"
-            overflowY="hidden"
+            overflow="hidden"
           >
             {loading ? (
               <VStack spacing={4} align="stretch" px={2} py={3}>
@@ -532,8 +532,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
               id="message-input"
               isRequired
               mt={3}
-              position="sticky"
-              bottom="0"
+              flexShrink={0}
               pt={2}
               bg="rgba(255,255,255,0.88)"
               borderTopWidth="1px"
@@ -605,7 +604,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
               </Box>
             </FormControl>
           </Box>
-        </>
+        </Box>
       ) : (
         <Box display="flex" alignItems="center" justifyContent="center" h="100%" px={6}>
           <Box

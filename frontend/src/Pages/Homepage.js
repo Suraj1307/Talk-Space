@@ -120,7 +120,7 @@ function Homepage() {
                     borderRadius="full"
                     bg="orange.400"
                     animation={`${bounce} 1.25s infinite`}
-                    animationDelay={`${dot * 0.15}s`}
+                    sx={{ animationDelay: `${dot * 0.15}s` }}
                   />
                 ))}
               </HStack>
