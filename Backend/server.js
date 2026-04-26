@@ -87,13 +87,7 @@ const buildRateLimitStore = (prefix) => {
   });
 };
 
-const createRateLimiter = ({
-  windowMs,
-  limit,
-  prefix,
-  message,
-  skip,
-}) =>
+const createRateLimiter = ({ windowMs, limit, prefix, message, skip }) =>
   rateLimit({
     windowMs,
     limit,
@@ -143,28 +137,14 @@ if (trustProxy) {
   app.set("trust proxy", 1);
 }
 
-app.use(express.json({ limit: BODY_LIMIT }));
-app.use(express.urlencoded({ extended: true, limit: BODY_LIMIT }));
-app.use((req, res, next) => {
-  const requestOrigin = normalizeOrigin(req.headers.origin || "");
-
-  if (requestOrigin && allowedOrigins.has(requestOrigin)) {
-    res.header("Access-Control-Allow-Origin", requestOrigin);
-    res.header("Vary", "Origin");
-  }
-
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-
-  next();
-});
+// ✅ CORS must be first — before body parsers and routes
 app.use(cors(corsOptions));
 
+// Body parsers
+app.use(express.json({ limit: BODY_LIMIT }));
+app.use(express.urlencoded({ extended: true, limit: BODY_LIMIT }));
+
+// Health check
 app.get("/api/health", (req, res) => {
   res.status(200).json({
     status: "ok",
@@ -173,11 +153,12 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-app.use("/api/user/login", authLimiter);
+// Rate limiters — /api/user covers /api/user/login too, no need to list it twice
 app.use("/api/user", authLimiter);
 app.use("/api/chat", writeApiLimiter);
 app.use("/api/message", writeApiLimiter);
 
+// Routes
 app.use("/api/user", userRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/message", messageRoutes);
@@ -374,7 +355,6 @@ const shutdown = async (signal) => {
             reject(error);
             return;
           }
-
           resolve();
         });
       });
