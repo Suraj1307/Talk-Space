@@ -22,6 +22,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ChatState } from "../Context/ChatProvider";
 import { getSender } from "../config/ChatLogics";
 import { apiClient, getAuthConfig } from "../config/apiClient";
+import { getStoredUserInfo } from "../config/storage";
 import ChatLoading from "./ChatLoading";
 import GroupChatModal from "./miscellaneous/GroupChatModal";
 
@@ -105,7 +106,7 @@ const MyChats = ({ fetchAgain }) => {
   }, [setChats, toast, user]);
 
   useEffect(() => {
-    setLoggedUser(JSON.parse(localStorage.getItem("userInfo")));
+    setLoggedUser(getStoredUserInfo());
     fetchChats();
   }, [fetchAgain, fetchChats]);
 

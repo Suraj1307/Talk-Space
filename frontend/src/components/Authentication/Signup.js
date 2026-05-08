@@ -16,6 +16,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { HiEye, HiEyeOff } from "react-icons/hi";
 import { apiClient } from "../../config/apiClient";
+import { ChatState } from "../../Context/ChatProvider";
 import GoogleOAuthButton from "./GoogleOAuthButton";
 
 const Signup = () => {
@@ -33,6 +34,7 @@ const Signup = () => {
   const [errors, setErrors] = useState({});
   const toast = useToast();
   const navigate = useNavigate();
+  const { setUser } = ChatState();
 
   const defaultPic =
     "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png";
@@ -78,6 +80,7 @@ const Signup = () => {
       });
 
       localStorage.setItem("userInfo", JSON.stringify(data));
+      setUser(data);
       navigate("/chats");
     } catch (error) {
       toast({

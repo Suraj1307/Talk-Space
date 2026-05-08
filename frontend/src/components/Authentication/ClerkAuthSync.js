@@ -3,6 +3,7 @@ import { useAuth } from "@clerk/clerk-react";
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "../../config/apiClient";
+import { getStoredUserInfo } from "../../config/storage";
 import { ChatState } from "../../Context/ChatProvider";
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -16,7 +17,7 @@ const ClerkAuthSync = () => {
   const hasCompletedRef = useRef(false);
 
   useEffect(() => {
-    const existingUser = JSON.parse(localStorage.getItem("userInfo"));
+    const existingUser = getStoredUserInfo();
     if (existingUser) {
       hasCompletedRef.current = true;
       setUser(existingUser);

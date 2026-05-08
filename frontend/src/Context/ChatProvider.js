@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { getStoredUserInfo } from "../config/storage";
 
 const ChatContext = createContext();
 
@@ -20,7 +21,7 @@ const ChatProvider = ({ children }) => {
   const [onlineUsers, setOnlineUsers] = useState({});
 
   useEffect(() => {
-    const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+    const userInfo = getStoredUserInfo();
     setUser(userInfo);
     const savedVisibility = localStorage.getItem("talk-space-visibility-status");
     if (savedVisibility === "online" || savedVisibility === "away") {

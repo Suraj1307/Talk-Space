@@ -1,4 +1,5 @@
 const asyncHandler = require("express-async-handler");
+const mongoose = require("mongoose");
 const Chat = require("../models/chatModel");
 const Message = require("../models/messageModel");
 const User = require("../models/userModel");
@@ -8,6 +9,26 @@ const findChatForUser = (chatId, userId) =>
     _id: chatId,
     users: { $elemMatch: { $eq: userId } },
   });
+
+const ensureValidObjectId = (value, fieldName) => {
+  if (!mongoose.Types.ObjectId.isValid(value)) {
+    const error = new Error(`${fieldName} is invalid`);
+    error.statusCode = 400;
+    throw error;
+  }
+};
+
+const parseUsersInput = (usersInput) => {
+  const users = Array.isArray(usersInput) ? usersInput : JSON.parse(usersInput || "[]");
+
+  if (!Array.isArray(users)) {
+    const error = new Error("users must be an array");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return users;
+};
 
 //@description     Create or fetch One to One Chat
 //@route           POST /api/chat/
@@ -19,6 +40,8 @@ const accessChat = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("userId is required");
   }
+
+  ensureValidObjectId(userId, "userId");
 
   if (userId === req.user._id.toString()) {
     res.status(400);
@@ -98,11 +121,13 @@ const fetchChats = asyncHandler(async (req, res) => {
 //@route           POST /api/chat/group
 //@access          Protected
 const createGroupChat = asyncHandler(async (req, res) => {
-  if (!req.body.users || !req.body.name) {
-    return res.status(400).send({ message: "Please Fill all the feilds" });
+  const groupName = (req.body.name || "").trim();
+
+  if (!req.body.users || !groupName) {
+    return res.status(400).send({ message: "Please fill all the fields" });
   }
 
-  var users = JSON.parse(req.body.users);
+  const users = parseUsersInput(req.body.users);
 
   if (users.length < 2) {
     return res
@@ -111,10 +136,17 @@ const createGroupChat = asyncHandler(async (req, res) => {
   }
 
   const uniqueUserIds = [...new Set([...users, req.user._id.toString()])];
+  uniqueUserIds.forEach((userId) => ensureValidObjectId(userId, "userId"));
+
+  const existingUsersCount = await User.countDocuments({ _id: { $in: uniqueUserIds } });
+  if (existingUsersCount !== uniqueUserIds.length) {
+    res.status(404);
+    throw new Error("One or more users were not found");
+  }
 
   try {
     const groupChat = await Chat.create({
-      chatName: req.body.name,
+      chatName: groupName,
       users: uniqueUserIds,
       isGroupChat: true,
       groupAdmin: req.user._id,
@@ -135,7 +167,15 @@ const createGroupChat = asyncHandler(async (req, res) => {
 // @route   PUT /api/chat/rename
 // @access  Protected
 const renameGroup = asyncHandler(async (req, res) => {
-  const { chatId, chatName } = req.body;
+  const { chatId } = req.body;
+  const chatName = (req.body.chatName || "").trim();
+
+  ensureValidObjectId(chatId, "chatId");
+
+  if (!chatName) {
+    res.status(400);
+    throw new Error("chatName is required");
+  }
 
   const chat = await Chat.findById(chatId).select("groupAdmin isGroupChat users");
   if (!chat || !chat.users.some((id) => id.toString() === req.user._id.toString())) {
@@ -175,6 +215,9 @@ const renameGroup = asyncHandler(async (req, res) => {
 const removeFromGroup = asyncHandler(async (req, res) => {
   const { chatId, userId } = req.body;
 
+  ensureValidObjectId(chatId, "chatId");
+  ensureValidObjectId(userId, "userId");
+
   const chat = await Chat.findById(chatId).select("groupAdmin isGroupChat users");
   if (!chat || !chat.users.some((id) => id.toString() === req.user._id.toString())) {
     res.status(404);
@@ -194,20 +237,36 @@ const removeFromGroup = asyncHandler(async (req, res) => {
     throw new Error("Only group admins can remove other users");
   }
 
-  const removed = await Chat.findByIdAndUpdate(
-    chatId,
-    { $pull: { users: userId } },
-    { new: true }
-  )
+  if (!chat.users.some((id) => id.toString() === userId)) {
+    res.status(400);
+    throw new Error("User is not in the group");
+  }
+
+  const update = { $pull: { users: userId } };
+  const remainingUserIds = chat.users
+    .map((id) => id.toString())
+    .filter((id) => id !== userId);
+
+  if (chat.groupAdmin?.toString() === userId) {
+    update.groupAdmin = remainingUserIds[0] || null;
+  }
+
+  const removed = await Chat.findByIdAndUpdate(chatId, update, { new: true })
     .populate("users", "-password")
     .populate("groupAdmin", "-password");
 
   if (!removed) {
     res.status(404);
     throw new Error("Chat Not Found");
-  } else {
-    res.json(removed);
   }
+
+  if (!removed.users.length) {
+    await Chat.findByIdAndDelete(chatId);
+    await Message.deleteMany({ chat: chatId });
+    return res.json({ deleted: true });
+  }
+
+  res.json(removed);
 });
 
 // @desc    Add user to Group / Leave
@@ -215,6 +274,9 @@ const removeFromGroup = asyncHandler(async (req, res) => {
 // @access  Protected
 const addToGroup = asyncHandler(async (req, res) => {
   const { chatId, userId } = req.body;
+
+  ensureValidObjectId(chatId, "chatId");
+  ensureValidObjectId(userId, "userId");
 
   const chat = await Chat.findById(chatId).select("groupAdmin isGroupChat users");
   if (!chat || !chat.users.some((id) => id.toString() === req.user._id.toString())) {
@@ -235,6 +297,12 @@ const addToGroup = asyncHandler(async (req, res) => {
   if (chat.users.some((id) => id.toString() === userId)) {
     res.status(400);
     throw new Error("User already in group");
+  }
+
+  const userExists = await User.exists({ _id: userId });
+  if (!userExists) {
+    res.status(404);
+    throw new Error("User not found");
   }
 
   const added = await Chat.findByIdAndUpdate(
@@ -262,6 +330,8 @@ const removeUserChat = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "chatId is required" });
   }
 
+  ensureValidObjectId(chatId, "chatId");
+
   const existingChat = await findChatForUser(chatId, req.user._id);
   if (!existingChat) {
     res.status(404);
@@ -269,11 +339,16 @@ const removeUserChat = asyncHandler(async (req, res) => {
   }
 
   // Remove user from chat
-  const updatedChat = await Chat.findByIdAndUpdate(
-    chatId,
-    { $pull: { users: req.user._id } },
-    { new: true }
-  );
+  const update = { $pull: { users: req.user._id } };
+  const remainingUserIds = existingChat.users
+    .map((id) => id.toString())
+    .filter((id) => id !== req.user._id.toString());
+
+  if (existingChat.groupAdmin?.toString() === req.user._id.toString()) {
+    update.groupAdmin = remainingUserIds[0] || null;
+  }
+
+  const updatedChat = await Chat.findByIdAndUpdate(chatId, update, { new: true });
 
   // If no users left → delete chat
   if (updatedChat && updatedChat.users.length === 0) {

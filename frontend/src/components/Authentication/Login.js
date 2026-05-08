@@ -15,6 +15,7 @@ import { useState } from "react";
 import { HiEye, HiEyeOff } from "react-icons/hi";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "../../config/apiClient";
+import { ChatState } from "../../Context/ChatProvider";
 import GoogleOAuthButton from "./GoogleOAuthButton";
 
 const Login = () => {
@@ -24,6 +25,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const toast = useToast();
   const navigate = useNavigate();
+  const { setUser } = ChatState();
   const emailError = email && !/\S+@\S+\.\S+/.test(email) ? "Enter a valid email address" : "";
   const passwordError =
     password && password.length < 6 ? "Password should be at least 6 characters" : "";
@@ -64,6 +66,7 @@ const Login = () => {
       });
 
       localStorage.setItem("userInfo", JSON.stringify(data));
+      setUser(data);
       navigate("/chats");
     } catch (error) {
       toast({
@@ -140,7 +143,6 @@ const Login = () => {
               bg="white"
               color="black"
               border="1px solid #d6d3d1"
-              onKeyDown={(e) => e.key === "Enter" && submitHandler()}
             />
             <InputRightElement width="3.5rem">
               <Button

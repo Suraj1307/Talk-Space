@@ -1,4 +1,5 @@
 const asyncHandler = require("express-async-handler");
+const mongoose = require("mongoose");
 const Message = require("../models/messageModel");
 const User = require("../models/userModel");
 const Chat = require("../models/chatModel");
@@ -16,6 +17,14 @@ const ensureChatMember = async (chatId, userId) => {
   }
 
   return chat;
+};
+
+const ensureValidObjectId = (value, fieldName) => {
+  if (!mongoose.Types.ObjectId.isValid(value)) {
+    const error = new Error(`${fieldName} is invalid`);
+    error.statusCode = 400;
+    throw error;
+  }
 };
 
 const populateMessage = async (message) => {
@@ -40,6 +49,7 @@ const markMessagesReadForUser = async (chatId, userId) =>
 //@access          Protected
 const allMessages = asyncHandler(async (req, res) => {
   try {
+    ensureValidObjectId(req.params.chatId, "chatId");
     await ensureChatMember(req.params.chatId, req.user._id);
     await markMessagesReadForUser(req.params.chatId, req.user._id);
 
@@ -65,6 +75,7 @@ const sendMessage = asyncHandler(async (req, res) => {
     throw new Error("content and chatId are required");
   }
 
+  ensureValidObjectId(chatId, "chatId");
   const chat = await ensureChatMember(chatId, req.user._id);
 
   var newMessage = {
@@ -96,9 +107,18 @@ const markDelivered = asyncHandler(async (req, res) => {
     return res.json({ updated: 0 });
   }
 
+  const validMessageIds = messageIds.filter((messageId) => mongoose.Types.ObjectId.isValid(messageId));
+  if (!validMessageIds.length) {
+    return res.json({ updated: 0 });
+  }
+
+  const accessibleChats = await Chat.find({ users: { $elemMatch: { $eq: req.user._id } } }).select("_id");
+  const accessibleChatIds = accessibleChats.map((chat) => chat._id);
+
   const result = await Message.updateMany(
     {
-      _id: { $in: messageIds },
+      _id: { $in: validMessageIds },
+      chat: { $in: accessibleChatIds },
       sender: { $ne: req.user._id },
       deliveredTo: { $ne: req.user._id },
     },
@@ -116,6 +136,7 @@ const markRead = asyncHandler(async (req, res) => {
     throw new Error("chatId is required");
   }
 
+  ensureValidObjectId(chatId, "chatId");
   await ensureChatMember(chatId, req.user._id);
   const result = await markMessagesReadForUser(chatId, req.user._id);
 
