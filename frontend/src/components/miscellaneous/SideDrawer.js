@@ -26,6 +26,7 @@ import {
   useToast,
 } from "@chakra-ui/react";
 import { BellIcon, ChevronDownIcon, SearchIcon } from "@chakra-ui/icons";
+import { useAuth } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import { ChatState } from "../../Context/ChatProvider";
 import ProfileModal from "./ProfileModal";
@@ -65,6 +66,7 @@ const SideDrawer = () => {
   } = useDisclosure();
   const navigate = useNavigate();
   const toast = useToast();
+  const { signOut, isSignedIn: isClerkSignedIn } = useAuth();
 
   const sortedNotifications = useMemo(
     () => [...notification].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
@@ -220,9 +222,28 @@ const SideDrawer = () => {
     }
   };
 
-  const logoutHandler = () => {
-    localStorage.removeItem("userInfo");
-    navigate("/");
+  const logoutHandler = async () => {
+    try {
+      localStorage.removeItem("userInfo");
+      setUser(undefined);
+      setSelectedChat(undefined);
+      setNotification([]);
+      setChats([]);
+
+      if (isClerkSignedIn) {
+        await signOut({ redirectUrl: "/" });
+      }
+
+      navigate("/", { replace: true });
+    } catch (error) {
+      toast({
+        title: "Logout failed",
+        description: error?.errors?.[0]?.longMessage || error?.message || "Please try again",
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+      });
+    }
   };
 
   return (

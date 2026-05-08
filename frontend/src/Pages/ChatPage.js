@@ -3,11 +3,9 @@ import { useEffect, useState } from "react";
 import Chatbox from "../components/ChatBox";
 import MyChats from "../components/MyChats";
 import SideDrawer from "../components/miscellaneous/SideDrawer";
-import { ChatState } from "../Context/ChatProvider";
 
 const ChatPage = () => {
   const [fetchAgain, setFetchAgain] = useState(false);
-  const { user } = ChatState();
 
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
@@ -43,7 +41,7 @@ const ChatPage = () => {
         touchAction: "pan-y",
       }}
     >
-      {user && <SideDrawer />}
+      <SideDrawer />
       <Box
         display="flex"
         flex="1"
@@ -56,10 +54,8 @@ const ChatPage = () => {
         p={{ base: 2, md: "10px" }}
         overflow="hidden"
       >
-        {user && <MyChats fetchAgain={fetchAgain} />}
-        {user && (
-          <Chatbox fetchAgain={fetchAgain} setFetchAgain={setFetchAgain} />
-        )}
+        <MyChats fetchAgain={fetchAgain} />
+        <Chatbox fetchAgain={fetchAgain} setFetchAgain={setFetchAgain} />
       </Box>
     </div>
   );

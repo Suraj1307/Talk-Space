@@ -16,6 +16,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { HiEye, HiEyeOff } from "react-icons/hi";
 import { apiClient } from "../../config/apiClient";
+import GoogleOAuthButton from "./GoogleOAuthButton";
 
 const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -177,6 +178,11 @@ const Signup = () => {
     }
   };
 
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    submitHandler();
+  };
+
   return (
     <Box
       maxW="400px"
@@ -191,7 +197,7 @@ const Signup = () => {
       borderColor="blackAlpha.100"
       backdropFilter="blur(14px)"
     >
-      <VStack spacing={4}>
+      <VStack as="form" spacing={4} onSubmit={handleSubmit}>
         <FormControl isRequired isInvalid={errors.name}>
           <FormLabel>Name</FormLabel>
           <Input
@@ -326,7 +332,7 @@ const Signup = () => {
                   height="80"
                   style={{ borderRadius: "50%", objectFit: "cover" }}
                 />
-                <Button size="sm" variant="outline" onClick={clearSelectedImage}>
+                <Button size="sm" type="button" variant="outline" onClick={clearSelectedImage}>
                   Remove
                 </Button>
               </Box>
@@ -342,7 +348,7 @@ const Signup = () => {
           colorScheme="orange"
           width="100%"
           mt={4}
-          onClick={submitHandler}
+          type="submit"
           isLoading={loading || uploadingPic}
           borderRadius="full"
           isDisabled={uploadingPic}
@@ -351,6 +357,8 @@ const Signup = () => {
         >
           {uploadingPic ? "Uploading image..." : "Sign Up"}
         </Button>
+
+        {process.env.REACT_APP_CLERK_PUBLISHABLE_KEY ? <GoogleOAuthButton label="Continue with Google" /> : null}
       </VStack>
     </Box>
   );

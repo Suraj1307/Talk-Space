@@ -1,5 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
+import { ClerkProvider } from "@clerk/clerk-react";
 import "./index.css";
 import App from "./App";
 import { ChakraProvider, extendTheme } from "@chakra-ui/react";
@@ -66,19 +67,30 @@ const container = document.getElementById("root");
 
 // Create a React 18 root
 const root = createRoot(container);
+const clerkPublishableKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
+const clerkEnabled = /^pk_(test|live)_/i.test(clerkPublishableKey || "");
+
+const AppProviders = ({ children }) =>
+  clerkEnabled ? (
+    <ClerkProvider publishableKey={clerkPublishableKey}>{children}</ClerkProvider>
+  ) : (
+    children
+  );
 
 // Render the app
 root.render(
-  <BrowserRouter
-    future={{
-      v7_startTransition: true,
-      v7_relativeSplatPath: true,
-    }}
-  >
-    <ChatProvider>
-      <ChakraProvider theme={theme}>
-        <App />
-      </ChakraProvider>
-    </ChatProvider>
-  </BrowserRouter>
+  <AppProviders>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
+      <ChatProvider>
+        <ChakraProvider theme={theme}>
+          <App />
+        </ChakraProvider>
+      </ChatProvider>
+    </BrowserRouter>
+  </AppProviders>
 );

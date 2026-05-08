@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom"; 
 
 const ChatContext = createContext();
 
@@ -20,8 +19,6 @@ const ChatProvider = ({ children }) => {
   const [visibilityStatus, setVisibilityStatus] = useState("online");
   const [onlineUsers, setOnlineUsers] = useState({});
 
-  const navigate = useNavigate(); 
-
   useEffect(() => {
     const userInfo = JSON.parse(localStorage.getItem("userInfo"));
     setUser(userInfo);
@@ -29,10 +26,7 @@ const ChatProvider = ({ children }) => {
     if (savedVisibility === "online" || savedVisibility === "away") {
       setVisibilityStatus(savedVisibility);
     }
-
-    if (!userInfo) navigate("/"); 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigate]);
+  }, []);
 
   const openSearchDrawer = (focusSearch = false) => {
     setIsSearchOpen(true);

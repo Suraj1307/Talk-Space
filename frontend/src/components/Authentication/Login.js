@@ -15,6 +15,7 @@ import { useState } from "react";
 import { HiEye, HiEyeOff } from "react-icons/hi";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "../../config/apiClient";
+import GoogleOAuthButton from "./GoogleOAuthButton";
 
 const Login = () => {
   const [show, setShow] = useState(false);
@@ -90,6 +91,11 @@ const Login = () => {
     });
   };
 
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    submitHandler();
+  };
+
   return (
     <Box
       w="100%"
@@ -104,7 +110,7 @@ const Login = () => {
       borderColor="blackAlpha.100"
       backdropFilter="blur(14px)"
     >
-      <VStack spacing={4} w="100%">
+      <VStack as="form" spacing={4} w="100%" onSubmit={handleSubmit}>
         <FormControl id="login-email" isRequired isInvalid={Boolean(emailError)}>
           <FormLabel>Email Address</FormLabel>
           <Input
@@ -159,7 +165,7 @@ const Login = () => {
         <Button
           colorScheme="orange"
           width="100%"
-          onClick={submitHandler}
+          type="submit"
           isLoading={loading}
           borderRadius="full"
           bg="orange.400"
@@ -171,6 +177,7 @@ const Login = () => {
         </Button>
 
         <Button
+          type="button"
           variant="outline"
           colorScheme="orange"
           width="100%"
@@ -183,6 +190,8 @@ const Login = () => {
         <Text fontSize="sm" color="gray.500" textAlign="center" mt={2}>
           Tip: use the guest login to explore the app quickly.
         </Text>
+
+        {process.env.REACT_APP_CLERK_PUBLISHABLE_KEY ? <GoogleOAuthButton /> : null}
       </VStack>
     </Box>
   );

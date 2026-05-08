@@ -1,5 +1,6 @@
 const asyncHandler = require("express-async-handler");
 const crypto = require("crypto");
+const { createClerkClient, verifyToken } = require("@clerk/backend");
 const User = require("../models/userModel");
 const generateToken = require("../config/generateToken");
 
@@ -8,6 +9,45 @@ const defaultPic =
 
 const validateEmail = (email = "") => /\S+@\S+\.\S+/.test(email);
 const sanitizeName = (name = "") => name.trim().replace(/\s+/g, " ");
+const isClerkSecretKey = (value = "") => /^sk_(test|live)_/i.test(value.trim());
+const decodeJwtPayload = (token = "") => {
+  try {
+    const [, payload = ""] = token.split(".");
+    if (!payload) return null;
+
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+    return JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
+  } catch (error) {
+    return null;
+  }
+};
+
+const getClerkUserIdFromToken = (verification, clerkToken) =>
+  verification?.data?.sub ||
+  verification?.sub ||
+  decodeJwtPayload(clerkToken)?.sub ||
+  null;
+
+const buildUserPayload = (user) => ({
+  _id: user._id,
+  name: user.name,
+  email: user.email,
+  isAdmin: user.isAdmin,
+  pic: user.pic,
+  visibilityStatus: user.visibilityStatus,
+  lastSeenAt: user.lastSeenAt,
+  authProvider: user.clerkId ? "clerk" : "local",
+  token: generateToken(user._id),
+});
+
+const getAuthorizedParties = () =>
+  (process.env.FRONTEND_URL || "")
+    .split(",")
+    .map((origin) => origin.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+
+const getClerkClient = () => createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
 
 //@description     Get or Search all users
 //@route           GET /api/user?search=
@@ -71,16 +111,7 @@ const registerUser = asyncHandler(async (req, res) => {
   });
 
   if (user) {
-    res.status(201).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      isAdmin: user.isAdmin,
-      pic: user.pic,
-      visibilityStatus: user.visibilityStatus,
-      lastSeenAt: user.lastSeenAt,
-      token: generateToken(user._id),
-    });
+    res.status(201).json(buildUserPayload(user));
   } else {
     res.status(400);
     throw new Error("User not found");
@@ -105,20 +136,95 @@ const authUser = asyncHandler(async (req, res) => {
     user.lastSeenAt = new Date();
     await user.save();
 
-    res.json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      isAdmin: user.isAdmin,
-      pic: user.pic,
-      visibilityStatus: user.visibilityStatus,
-      lastSeenAt: user.lastSeenAt,
-      token: generateToken(user._id),
-    });
+    res.json(buildUserPayload(user));
   } else {
     res.status(401);
     throw new Error("Invalid Email or Password");
   }
+});
+
+//@description     Authenticate or register a user from Clerk
+//@route           POST /api/user/clerk/sync
+//@access          Public
+const syncClerkUser = asyncHandler(async (req, res) => {
+  const authHeader = req.headers.authorization || "";
+  const clerkToken = authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : "";
+
+  if (!process.env.CLERK_SECRET_KEY) {
+    res.status(503);
+    throw new Error("Clerk authentication is not configured on the server");
+  }
+
+  if (!isClerkSecretKey(process.env.CLERK_SECRET_KEY)) {
+    res.status(503);
+    throw new Error("CLERK_SECRET_KEY is invalid. Use your Clerk secret key, not a Google OAuth client secret.");
+  }
+
+  if (!clerkToken) {
+    res.status(401);
+    throw new Error("Clerk session token is required");
+  }
+
+  const authorizedParties = getAuthorizedParties();
+  const verification = await verifyToken(clerkToken, {
+    secretKey: process.env.CLERK_SECRET_KEY,
+    jwtKey: process.env.CLERK_JWT_KEY,
+    ...(authorizedParties.length ? { authorizedParties } : {}),
+  });
+
+  if (verification.errors) {
+    res.status(401);
+    throw new Error("Invalid Clerk session token");
+  }
+
+  const clerkUserId = getClerkUserIdFromToken(verification, clerkToken);
+
+  if (!clerkUserId) {
+    res.status(401);
+    throw new Error("Clerk user id is missing from the session token");
+  }
+
+  const clerkUser = await getClerkClient().users.getUser(clerkUserId);
+  const primaryEmail = clerkUser.emailAddresses.find(
+    (emailAddress) => emailAddress.id === clerkUser.primaryEmailAddressId
+  );
+  const normalizedEmail = (primaryEmail?.emailAddress || "").trim().toLowerCase();
+
+  if (!validateEmail(normalizedEmail)) {
+    res.status(400);
+    throw new Error("Clerk account does not have a valid primary email");
+  }
+
+  const clerkName = sanitizeName(
+    [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") ||
+      clerkUser.username ||
+      normalizedEmail.split("@")[0]
+  );
+  const clerkImage = clerkUser.imageUrl || defaultPic;
+
+  let user = await User.findOne({
+    $or: [{ clerkId: clerkUserId }, { email: normalizedEmail }],
+  });
+
+  if (user) {
+    user.clerkId = clerkUserId;
+    user.name = clerkName || user.name;
+    user.email = normalizedEmail;
+    user.pic = clerkImage || user.pic;
+    user.lastSeenAt = new Date();
+    await user.save();
+  } else {
+    user = await User.create({
+      name: clerkName,
+      email: normalizedEmail,
+      password: crypto.randomBytes(24).toString("hex"),
+      clerkId: clerkUserId,
+      pic: clerkImage,
+      lastSeenAt: new Date(),
+    });
+  }
+
+  res.json(buildUserPayload(user));
 });
 
 //@description     Get signed Cloudinary upload params
@@ -174,6 +280,7 @@ module.exports = {
   allUsers,
   registerUser,
   authUser,
+  syncClerkUser,
   getCloudinarySignature,
   updateVisibilityStatus,
 };
